@@ -253,7 +253,7 @@ failed()
 #
 help_list_files()
 {
-	echo "  $0 list-files [--with-pkg] [--new|--save|--base|*--both*]"
+	echo "  $0 list-files [--with-pkg] [--new|--save|--base|*--both*] [PKG...]"
 	echo "  $0 list-files --help|-h"
 }
 
@@ -300,7 +300,7 @@ do_list_files()
 	done
 
 	local c
-	for f in $(rpm -qa --configfiles); do
+	for f in $(rpm -qa --configfiles "$@"); do
 		# We expect a file name starting with '/'.
 		case "$f" in
 			(/*) ;;
