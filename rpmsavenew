@@ -316,11 +316,12 @@ help_diff()
 
 	options
 	print_option --stat "generate diffstat"
+	print_option --with-pkg "add package information to the output"
 }
 
 diff_main()
 {
-	diff -uN --color=always "$1" "$2"
+	diff -uN "$1" "$2"
 }
 
 do_diff()
@@ -328,6 +329,7 @@ do_diff()
 	local f
 	local b
 	local diffstat
+	local with_pkg=
 
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
@@ -342,6 +344,10 @@ do_diff()
 				diffstat=1
 				shift
 				;;
+			(--with-pkg)
+				with_pkg=$1
+				shift
+				;;
 			(-*)
 				error "unknown option: $1"
 				;;
@@ -353,6 +359,7 @@ do_diff()
 
 	{
 		foreach_rpmsavenew \
+			$with_pkg \
 			"do_${_ACTION//-/_}" "${_ACTION//-/_}"_main \
 			"$@"
 	} | if [[ -n "${diffstat}" ]]; then
@@ -411,8 +418,10 @@ do_sha1()
 
 help_ls_lZ()
 {
-	echo "  $0 ls-lZ [FILE...]"
+	echo "  $0 ls-lZ [options] [FILE...]"
 	echo "  $0 ls-lZ --help|-h"
+	options
+	print_option --with-pkg "add package information to the output"
 }
 
 ls_lZ_main()
@@ -422,6 +431,7 @@ ls_lZ_main()
 
 do_ls_lZ()
 {
+	local with_pkg=
 	local f
 	local b
 
@@ -430,6 +440,10 @@ do_ls_lZ()
 			(-h|--help)
 				do_help ${_ACTION}
 				exit 0
+				;;
+			(--with-pkg)
+				with_pkg=$1
+				shift
 				;;
 			(-*)
 				error "unknown option: $1"
@@ -441,6 +455,7 @@ do_ls_lZ()
 	done
 
 	foreach_rpmsavenew \
+		$with_pkg \
 		--one-by-one "do_${_ACTION//-/_}" "${_ACTION//-/_}"_main \
 		"$@"
 }
