@@ -144,6 +144,12 @@ do_list_files()
 
 	local c
 	for f in $(rpm -qa --configfiles); do
+		# We expect a file name starting with '/'.
+		case "$f" in
+			(/*) ;;
+			(*) continue;;
+		esac
+
 		if [[ -e "${f}".rpmsave ]]; then
 			case "$filter" in
 				(both|save)
