@@ -541,6 +541,7 @@ do_diff()
 help_sha1()
 {
 	echo "  $0 sha1 [options] [FILE...]"
+	echo "  $0 sha1 [options] --pkg PKG"
 	echo "  $0 sha1 --help|-h"
 	options
 	print_option --with-pkg "add package information to the output"
@@ -556,6 +557,7 @@ do_sha1()
 	local f
 	local b
 	local with_pkg=
+	local pkg
 
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
@@ -566,6 +568,20 @@ do_sha1()
 			(--with-pkg)
 				with_pkg=$1
 				shift
+				;;
+			(--pkg=*)
+				pkg=$1
+				shift
+				break
+				;;
+			(--pkg)
+				shift
+				pkg="--pkg=$1"
+				if [[ -z "$pkg" ]]; then
+					error "No package given to --pkg option"
+				fi
+				shift
+				break
 				;;
 			(-*)
 				error "unknown option: $1"
@@ -578,6 +594,7 @@ do_sha1()
 
 	foreach_rpmsavenew \
 		$with_pkg \
+		$pkg \
 		--one-by-one "do_${_ACTION//-/_}" "${_ACTION//-/_}"_main \
 		-- "$@"
 }
