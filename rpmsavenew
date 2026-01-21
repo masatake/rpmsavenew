@@ -102,7 +102,7 @@ foreach_rpmsavenew()
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			(-h|--help)
-				help_${_ACTION//-/_}
+				do_help "${_ACTION}"
 				exit 0
 				;;
 			(--one-by-one)
@@ -223,7 +223,7 @@ do_list_files()
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			(-h|--help)
-				help_${_ACTION//-/_}
+				do_help "${_ACTION}"
 				exit 0
 				;;
 			(--with-pkg)
@@ -318,7 +318,7 @@ do_diff()
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			(-h|--help)
-				help_${_ACTION//-/_}
+				do_help "${_ACTION}"
 				exit 0
 				;;
 			(--stat)
@@ -371,7 +371,7 @@ do_sha1()
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			(-h|--help)
-				help_${_ACTION//-/_}
+				do_help "${_ACTION}"
 				exit 0
 				;;
 			(--with-pkg)
@@ -412,7 +412,7 @@ do_ls_lZ()
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			(-h|--help)
-				help_${_ACTION//-/_}
+				do_help ${_ACTION}
 				exit 0
 				;;
 			(-*)
@@ -449,7 +449,7 @@ do_help()
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			(-h|--help)
-				help_${_ACTION//-/_}
+				do_help ${_ACTION}
 				exit 0
 				;;
 			(-*)
