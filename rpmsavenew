@@ -128,6 +128,7 @@ foreach_rpmsavenew()
 {
 	local one_by_one=
 	local with_pkg=
+	local pkg=
 
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
@@ -141,6 +142,10 @@ foreach_rpmsavenew()
 				;;
 			(--with-pkg)
 				with_pkg=1
+				shift
+				;;
+			(--pkg=*)
+				pkg=${1#--pkg=}
 				shift
 				;;
 			(-*)
@@ -187,7 +192,7 @@ foreach_rpmsavenew()
 			if [[ -n "$with_pkg" ]]; then
 				echo
 			fi
-		done < <(do_list_files --with-pkg --base)
+		done < <(do_list_files --with-pkg --base $pkg)
 		return $r
 	fi
 
@@ -300,7 +305,13 @@ do_list_files()
 	done
 
 	local c
-	for f in $(rpm -qa --configfiles "$@"); do
+	local aflag=
+
+	if [[ $# -eq 0 ]]; then
+		aflag=a
+	fi
+
+	for f in $(rpm -q${aflag} --configfiles "$@"); do
 		# We expect a file name starting with '/'.
 		case "$f" in
 			(/*) ;;
@@ -345,6 +356,7 @@ do_list_files()
 help_diff()
 {
 	echo "  $0 diff [options] [FILE...]"
+	echo "  $0 diff [options] --pkg PKG"
 	echo "  $0 diff --help|-h"
 
 	options
@@ -395,6 +407,8 @@ do_diff()
 	local ignore_sh_comments=
 	local ignore_blank_lines=
 
+	local pkg
+
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			(-h|--help)
@@ -411,6 +425,20 @@ do_diff()
 			(--with-pkg)
 				with_pkg=$1
 				shift
+				;;
+			(--pkg=*)
+				pkg=$1
+				shift
+				break
+				;;
+			(--pkg)
+				shift
+				pkg="--pkg=$1"
+				if [[ -z "$pkg" ]]; then
+					error "No package given to --pkg option"
+				fi
+				shift
+				break
 				;;
 			(--color=*)
 				color=${1#--color=}
@@ -487,6 +515,7 @@ do_diff()
 	{
 		foreach_rpmsavenew \
 			$with_pkg \
+			$pkg \
 			"do_${_ACTION//-/_}" "${_ACTION//-/_}"_main \
 			--color="$color" \
 			"${ignore[@]}" \
