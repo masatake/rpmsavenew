@@ -97,6 +97,7 @@ error_if_unknown_action()
 foreach_rpmsavenew()
 {
 	local one_by_one=
+	local with_pkg=
 
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
@@ -106,6 +107,10 @@ foreach_rpmsavenew()
 				;;
 			(--one-by-one)
 				one_by_one=1
+				shift
+				;;
+			(--with-pkg)
+				with_pkg=1
 				shift
 				;;
 			(-*)
@@ -126,12 +131,18 @@ foreach_rpmsavenew()
 
 	if [[ $# -eq 0 ]]; then
 		while read p f; do
-			echo "#"
-			echo "# package: $p"
-			echo "#"
-			echo "---"
+			if [[ -n "$with_pkg" ]]; then
+				echo "#"
+				echo "# package: $p"
+				echo "#"
+				echo "---"
+			fi
+
 			"$self" "$f" || r=1
-			echo
+
+			if [[ -n "$with_pkg" ]]; then
+				echo
+			fi
 		done < <(do_list_files --with-pkg --base)
 		return $r
 	fi
@@ -339,8 +350,11 @@ do_diff()
 #
 help_sha1()
 {
-	echo "  $0 sha1 [FILE...]"
+	echo "  $0 sha1 [options] [FILE...]"
 	echo "  $0 sha1 --help|-h"
+	echo
+	echo "OPTIONS:"
+	printf "  %-12s %s\n" --with-pkg "add package information to the output"
 }
 
 sha1_main()
@@ -352,12 +366,17 @@ do_sha1()
 {
 	local f
 	local b
+	local with_pkg=
 
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			(-h|--help)
 				help_${_ACTION//-/_}
 				exit 0
+				;;
+			(--with-pkg)
+				with_pkg=$1
+				shift
 				;;
 			(-*)
 				error "unknown option: $1"
@@ -369,6 +388,7 @@ do_sha1()
 	done
 
 	foreach_rpmsavenew \
+		$with_pkg \
 		--one-by-one "do_${_ACTION//-/_}" "${_ACTION//-/_}"_main \
 		"$@"
 }
