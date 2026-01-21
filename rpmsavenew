@@ -1,0 +1,476 @@
+#!/bin/bash
+#
+# rpmsavenew — inspect and triage .rpmsave/.rpmnew files left by rpm updates
+#
+# Copyright (C) 2026 Red Hat, Inc.
+# Copyright (C) 2026 Masatake YAMATO
+#
+# Author: Masatake YAMATO <yamato@redhat.com>
+#
+# program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+declare _ACTION=
+
+declare -ra actions=(
+	help
+	list-files
+	diff
+	sha1
+	ls-lZ
+	# accept-new
+	# remove-new
+	# ask-ai
+)
+
+member()
+{
+	local elt=$1
+	shift
+
+	local e
+	for e in "$@"; do
+		if [[ "$e" == "$elt" ]]; then
+			return 0
+		fi
+	done
+
+	return 1
+}
+
+error()
+{
+	if [[ -n "$_ACTION" ]]; then
+		echo -n "ERROR[$_ACTION]: "
+	else
+		echo -n "ERROR: "
+	fi
+
+	if [[ $# == 0 ]]; then
+		echo "$1"
+	else
+		printf "$@"
+		echo
+	fi
+
+	exit 1
+} 1>&2
+
+warning()
+{
+	if [[ -n "$_ACTION" ]]; then
+		echo -n "ERROR[$_ACTION]: "
+	else
+		echo -n "ERROR: "
+	fi
+
+	if [[ $# == 0 ]]; then
+		echo "$1"
+	else
+		printf "$@"
+		echo
+	fi
+}
+
+error_if_unknown_action()
+{
+	local a=$1
+
+	if ! member "$a" "${actions[@]}"; then
+		error "unknown action: $a"
+	fi
+}
+
+#
+# action: list-files
+#
+help_list_files()
+{
+	echo "  $0 list-files [--with-pkg] [--new|--save|--base|*--both*]"
+	echo "  $0 list-files --help|-h"
+}
+
+do_list_files()
+{
+	local filter=both
+	local with_pkg=
+	local f
+	local c
+
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			(-h|--help)
+				help_${_ACTION//-/_}
+				exit 0
+				;;
+			(--with-pkg)
+				with_pkg=1
+				shift
+				;;
+			(--new)
+				filter=new
+				shift
+				;;
+			(--save)
+				filter=save
+				shift
+				;;
+			(--base)
+				filter=base
+				shift
+				;;
+			(--both)
+				filter=both
+				shift
+				;;
+			(-*)
+				error "unknown option: $1"
+				;;
+			(*)
+				break
+				;;
+		esac
+	done
+
+	local c
+	for f in $(rpm -qa --configfiles); do
+		if [[ -e "${f}".rpmsave ]]; then
+			case "$filter" in
+				(both|save)
+					c="${f}.rpmsave"
+					;;
+				(base)
+					c="${f}"
+					;;
+			esac
+		elif [[ -e "${f}".rpmnew ]]; then
+			case "$filter" in
+				(both|new)
+					c="${f}.rpmnew"
+					;;
+				(base)
+					c="${f}"
+					;;
+			esac
+		else
+			c=
+		fi
+
+		if [[ -n "$c" ]]; then
+			if [[ -n "${with_pkg}" ]]; then
+				printf "%50s %s\n" $(rpm -qf "$f") "$c"
+			else
+				printf "%s\n" "$c"
+			fi
+		fi
+	done
+}
+
+#
+# action: diff
+#
+help_diff()
+{
+	echo "  $0 diff [--stat] [FILE...]"
+	echo "  $0 diff --help|-h"
+}
+
+do_diff()
+{
+	local f
+	local b
+	local diffstat
+
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			(-h|--help)
+				help_${_ACTION//-/_}
+				exit 0
+				;;
+			(--stat)
+				diffstat=1
+				shift
+				;;
+			(-*)
+				error "unknown option: $1"
+				;;
+			(*)
+				break
+				;;
+		esac
+	done
+
+	{
+		if [[ $# -eq 0 ]]; then
+			while read p f; do
+				echo "#"
+				echo "# package: $p"
+				echo "#"
+				echo "---"
+				do_diff "$f"
+				echo
+			done < <(do_list_files --with-pkg --base)
+			return 0
+		fi
+
+		for f in "$@"; do
+			case "$f" in
+				(*.rpmsave)
+					f=${f%.rpmsave}
+					;;
+				(*.rpmnew)
+					f=${f%.rpmnew}
+					;;
+			esac
+
+			if [[ -e "${f}".rpmsave ]]; then
+				diff -uN --color=always "${f}".rpmsave "${f}"
+			elif [[ -e "${f}".rpmnew ]]; then
+				diff -uN --color=always "${f}" "${f}".rpmnew
+			else
+				warning "no rpmnew or rpmsave for ${f}"
+			fi
+		done
+	} | if [[ -n "${diffstat}" ]]; then
+		diffstat
+	else
+		cat
+	fi
+}
+
+#
+# action: sha1
+#
+help_sha1()
+{
+	echo "  $0 sha1 [FILE...]"
+	echo "  $0 sha1 --help|-h"
+}
+
+do_sha1()
+{
+	local f
+	local b
+
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			(-h|--help)
+				help_${_ACTION//-/_}
+				exit 0
+				;;
+			(-*)
+				error "unknown option: $1"
+				;;
+			(*)
+				break
+				;;
+		esac
+	done
+
+	{
+		if [[ $# -eq 0 ]]; then
+			while read p f; do
+				echo "#"
+				echo "# package: $p"
+				echo "#"
+				echo "---"
+				do_sha1 "$f"
+				echo
+			done < <(do_list_files --with-pkg --base)
+			return 0
+		fi
+
+		for f in "$@"; do
+			case "$f" in
+				(*.rpmsave)
+					f=${f%.rpmsave}
+					;;
+				(*.rpmnew)
+					f=${f%.rpmnew}
+					;;
+			esac
+
+			if [[ -e "${f}".rpmsave ]]; then
+				sha1sum "${f}".rpmsave
+				sha1sum "${f}"
+			elif [[ -e "${f}".rpmnew ]]; then
+				sha1sum "${f}"
+				sha1sum "${f}".rpmnew
+			else
+				warning "no rpmnew or rpmsave for ${f}"
+			fi
+		done
+	}
+}
+
+help_ls_lz()
+{
+	echo "  $0 ls-lZ [FILE...]"
+	echo "  $0 ls-lZ --help|-h"
+}
+
+do_ls_lZ()
+{
+	local f
+	local b
+
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			(-h|--help)
+				help_${_ACTION//-/_}
+				exit 0
+				;;
+			(-*)
+				error "unknown option: $1"
+				;;
+			(*)
+				break
+				;;
+		esac
+	done
+
+	{
+		if [[ $# -eq 0 ]]; then
+			while read p f; do
+				echo "#"
+				echo "# package: $p"
+				echo "#"
+				echo "---"
+				do_ls_lZ "$f"
+				echo
+			done < <(do_list_files --with-pkg --base)
+			return 0
+		fi
+
+		for f in "$@"; do
+			case "$f" in
+				(*.rpmsave)
+					f=${f%.rpmsave}
+					;;
+				(*.rpmnew)
+					f=${f%.rpmnew}
+					;;
+			esac
+
+			if [[ -e "${f}".rpmsave ]]; then
+				ls -lZ "${f}".rpmsave
+				ls -lZ "${f}"
+			elif [[ -e "${f}".rpmnew ]]; then
+				ls -lZ "${f}"
+				ls -lZ "${f}".rpmnew
+			else
+				warning "no rpmnew or rpmsave for ${f}"
+			fi
+		done
+	}
+}
+
+#
+# action: help
+#
+help_help()
+{
+	echo "  $0 help [ACTION]"
+	echo
+	list_actions
+}
+
+do_help()
+{
+	if [[ $# == 0 ]]; then
+		show_usage
+		exit 0
+	fi
+
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			(-h|--help)
+				help_${_ACTION//-/_}
+				exit 0
+				;;
+			(-*)
+				error "unknown option: $1"
+				;;
+			(*)
+				break
+				;;
+		esac
+	done
+
+	local a=$1
+	if ! member "$a" "${actions[@]}"; then
+		error "unknown action: $a"
+	fi
+
+	echo "Action usage:"
+
+	a=${a//-/_}
+	help_"$a" "$a"
+	exit 0
+}
+
+#
+# main
+#
+list_actions()
+{
+	local a
+
+	echo "Actions:"
+	for a in "${actions[@]}"; do
+		echo "  $a"
+	done
+}
+
+show_usage()
+{
+	echo "Usage:"
+	echo "  $0 -h|--help"
+	echo "  $0 help help"
+	echo "  $0 ACTION ..."
+	echo
+
+	list_actions
+}
+
+main()
+{
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			(-h|--help)
+				show_usage
+				exit 0
+				;;
+			(-*)
+				error "unknown option: $1"
+				;;
+			(*)
+				break
+				;;
+		esac
+	done
+
+	if [[ $# == 0 ]]; then
+		error "no action given"
+	fi
+
+	local a=$1
+	error_if_unknown_action "$a"
+	shift
+
+	_ACTION="$a"
+	a=${a//-/_}
+	do_"$a" "$@"
+}
+
+main "$@"
