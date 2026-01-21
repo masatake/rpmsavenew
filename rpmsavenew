@@ -94,6 +94,79 @@ error_if_unknown_action()
 	fi
 }
 
+foreach_rpmsavenew()
+{
+	local one_by_one=
+
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			(-h|--help)
+				help_${_ACTION//-/_}
+				exit 0
+				;;
+			(--one-by-one)
+				one_by_one=1
+				shift
+				;;
+			(-*)
+				error "unknown option: $1"
+				;;
+			(*)
+				break
+				;;
+		esac
+	done
+
+	local p f
+	local r=0
+
+	local self=$1
+	local proc=$2
+	shift 2
+
+	if [[ $# -eq 0 ]]; then
+		while read p f; do
+			echo "#"
+			echo "# package: $p"
+			echo "#"
+			echo "---"
+			"$self" "$f" || r=1
+			echo
+		done < <(do_list_files --with-pkg --base)
+		return $r
+	fi
+
+	for f in "$@"; do
+		case "$f" in
+			(*.rpmsave)
+				f=${f%.rpmsave}
+				;;
+			(*.rpmnew)
+				f=${f%.rpmnew}
+				;;
+		esac
+
+		if [[ -e "${f}".rpmsave ]]; then
+			if [[ -n "${one_by_one}" ]]; then
+				$proc "${f}".rpmsave || r=1
+				$proc "${f}" || r=1
+			else
+				$proc "${opts[@]}" "${f}".rpmsave "${f}"
+			fi
+		elif [[ -e "${f}".rpmnew ]]; then
+			if [[ -n "${one_by_one}" ]]; then
+				$proc "${f}" || r=1
+				$proc "${f}".rpmnew || r=1
+			else
+				$proc "${f}" "${f}".rpmnew || r=1
+			fi
+		else
+			warning "no rpmnew or rpmsave for ${f}"
+		fi
+	done
+	return $r
+}
+
 #
 # helpers for writing test cases
 #
@@ -220,6 +293,11 @@ help_diff()
 	echo "  $0 diff --help|-h"
 }
 
+diff_main()
+{
+	diff -uN --color=always "$1" "$2"
+}
+
 do_diff()
 {
 	local f
@@ -246,36 +324,9 @@ do_diff()
 	done
 
 	{
-		if [[ $# -eq 0 ]]; then
-			while read p f; do
-				echo "#"
-				echo "# package: $p"
-				echo "#"
-				echo "---"
-				do_diff "$f"
-				echo
-			done < <(do_list_files --with-pkg --base)
-			return 0
-		fi
-
-		for f in "$@"; do
-			case "$f" in
-				(*.rpmsave)
-					f=${f%.rpmsave}
-					;;
-				(*.rpmnew)
-					f=${f%.rpmnew}
-					;;
-			esac
-
-			if [[ -e "${f}".rpmsave ]]; then
-				diff -uN "${f}".rpmsave "${f}"
-			elif [[ -e "${f}".rpmnew ]]; then
-				diff -uN "${f}" "${f}".rpmnew
-			else
-				warning "no rpmnew or rpmsave for ${f}"
-			fi
-		done
+		foreach_rpmsavenew \
+			"do_${_ACTION//-/_}" "${_ACTION//-/_}"_main \
+			"$@"
 	} | if [[ -n "${diffstat}" ]]; then
 		diffstat
 	else
@@ -290,6 +341,11 @@ help_sha1()
 {
 	echo "  $0 sha1 [FILE...]"
 	echo "  $0 sha1 --help|-h"
+}
+
+sha1_main()
+{
+	sha1sum "$1"
 }
 
 do_sha1()
@@ -312,46 +368,20 @@ do_sha1()
 		esac
 	done
 
-	{
-		if [[ $# -eq 0 ]]; then
-			while read p f; do
-				echo "#"
-				echo "# package: $p"
-				echo "#"
-				echo "---"
-				do_sha1 "$f"
-				echo
-			done < <(do_list_files --with-pkg --base)
-			return 0
-		fi
-
-		for f in "$@"; do
-			case "$f" in
-				(*.rpmsave)
-					f=${f%.rpmsave}
-					;;
-				(*.rpmnew)
-					f=${f%.rpmnew}
-					;;
-			esac
-
-			if [[ -e "${f}".rpmsave ]]; then
-				sha1sum "${f}".rpmsave
-				sha1sum "${f}"
-			elif [[ -e "${f}".rpmnew ]]; then
-				sha1sum "${f}"
-				sha1sum "${f}".rpmnew
-			else
-				warning "no rpmnew or rpmsave for ${f}"
-			fi
-		done
-	}
+	foreach_rpmsavenew \
+		--one-by-one "do_${_ACTION//-/_}" "${_ACTION//-/_}"_main \
+		"$@"
 }
 
 help_ls_lZ()
 {
 	echo "  $0 ls-lZ [FILE...]"
 	echo "  $0 ls-lZ --help|-h"
+}
+
+ls_lZ_main()
+{
+	ls -lZ "$1"
 }
 
 do_ls_lZ()
@@ -374,40 +404,9 @@ do_ls_lZ()
 		esac
 	done
 
-	{
-		if [[ $# -eq 0 ]]; then
-			while read p f; do
-				echo "#"
-				echo "# package: $p"
-				echo "#"
-				echo "---"
-				do_ls_lZ "$f"
-				echo
-			done < <(do_list_files --with-pkg --base)
-			return 0
-		fi
-
-		for f in "$@"; do
-			case "$f" in
-				(*.rpmsave)
-					f=${f%.rpmsave}
-					;;
-				(*.rpmnew)
-					f=${f%.rpmnew}
-					;;
-			esac
-
-			if [[ -e "${f}".rpmsave ]]; then
-				ls -lZ "${f}".rpmsave
-				ls -lZ "${f}"
-			elif [[ -e "${f}".rpmnew ]]; then
-				ls -lZ "${f}"
-				ls -lZ "${f}".rpmnew
-			else
-				warning "no rpmnew or rpmsave for ${f}"
-			fi
-		done
-	}
+	foreach_rpmsavenew \
+		--one-by-one "do_${_ACTION//-/_}" "${_ACTION//-/_}"_main \
+		"$@"
 }
 
 #
