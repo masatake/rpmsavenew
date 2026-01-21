@@ -94,6 +94,17 @@ error_if_unknown_action()
 	fi
 }
 
+options()
+{
+	echo
+	echo "Options:"
+}
+
+print_option()
+{
+	printf "  %-12s %s\n" "$@"
+}
+
 foreach_rpmsavenew()
 {
 	local one_by_one=
@@ -300,8 +311,11 @@ do_list_files()
 #
 help_diff()
 {
-	echo "  $0 diff [--stat] [FILE...]"
+	echo "  $0 diff [options] [FILE...]"
 	echo "  $0 diff --help|-h"
+
+	options
+	print_option --stat "generate diffstat"
 }
 
 diff_main()
@@ -352,9 +366,8 @@ help_sha1()
 {
 	echo "  $0 sha1 [options] [FILE...]"
 	echo "  $0 sha1 --help|-h"
-	echo
-	echo "OPTIONS:"
-	printf "  %-12s %s\n" --with-pkg "add package information to the output"
+	options
+	print_option --with-pkg "add package information to the output"
 }
 
 sha1_main()
