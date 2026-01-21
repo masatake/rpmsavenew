@@ -336,6 +336,9 @@ do_diff()
 				exit 0
 				;;
 			(--stat)
+				if ! type diffstat > /dev/null 2>&1; then
+					error "Command not available: diffstat"
+				fi
 				diffstat=1
 				shift
 				;;
