@@ -269,9 +269,9 @@ do_diff()
 			esac
 
 			if [[ -e "${f}".rpmsave ]]; then
-				diff -uN --color=always "${f}".rpmsave "${f}"
+				diff -uN "${f}".rpmsave "${f}"
 			elif [[ -e "${f}".rpmnew ]]; then
-				diff -uN --color=always "${f}" "${f}".rpmnew
+				diff -uN "${f}" "${f}".rpmnew
 			else
 				warning "no rpmnew or rpmsave for ${f}"
 			fi
