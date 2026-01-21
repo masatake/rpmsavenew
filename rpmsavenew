@@ -140,6 +140,20 @@ foreach_rpmsavenew()
 	local proc=$2
 	shift 2
 
+	local -a opts
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			(--)
+				shift
+				break
+				;;
+			(*)
+				opts+=("$1")
+				shift
+				;;
+		esac
+	done
+
 	if [[ $# -eq 0 ]]; then
 		while read p f; do
 			if [[ -n "$with_pkg" ]]; then
@@ -149,7 +163,7 @@ foreach_rpmsavenew()
 				echo "---"
 			fi
 
-			"$self" "$f" || r=1
+			"$self" "${opts[@]}" "$f" || r=1
 
 			if [[ -n "$with_pkg" ]]; then
 				echo
@@ -170,17 +184,17 @@ foreach_rpmsavenew()
 
 		if [[ -e "${f}".rpmsave ]]; then
 			if [[ -n "${one_by_one}" ]]; then
-				$proc "${f}".rpmsave || r=1
-				$proc "${f}" || r=1
+				$proc "${opts[@]}" "${f}".rpmsave || r=1
+				$proc "${opts[@]}" "${f}" || r=1
 			else
 				$proc "${opts[@]}" "${f}".rpmsave "${f}"
 			fi
 		elif [[ -e "${f}".rpmnew ]]; then
 			if [[ -n "${one_by_one}" ]]; then
-				$proc "${f}" || r=1
-				$proc "${f}".rpmnew || r=1
+				$proc "${opts[@]}" "${f}" || r=1
+				$proc "${opts[@]}" "${f}".rpmnew || r=1
 			else
-				$proc "${f}" "${f}".rpmnew || r=1
+				$proc "${opts[@]}" "${f}" "${f}".rpmnew || r=1
 			fi
 		else
 			warning "no rpmnew or rpmsave for ${f}"
@@ -317,11 +331,12 @@ help_diff()
 	options
 	print_option --stat "generate diffstat"
 	print_option --with-pkg "add package information to the output"
+	print_option '--color=auto|always|never' "use markers to highlight the matching strings"
 }
 
 diff_main()
 {
-	diff -uN "$1" "$2"
+	diff -uN "$@"
 }
 
 do_diff()
@@ -330,6 +345,7 @@ do_diff()
 	local b
 	local diffstat
 	local with_pkg=
+	local color=auto
 
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
@@ -348,6 +364,15 @@ do_diff()
 				with_pkg=$1
 				shift
 				;;
+			(--color=*)
+				color=${1#--color=}
+				shift
+				;;
+			(--color)
+				shift
+				color=$1
+				shift
+				;;
 			(-*)
 				error "unknown option: $1"
 				;;
@@ -357,11 +382,28 @@ do_diff()
 		esac
 	done
 
+	if ! member "$color" auto always never; then
+		error "unexpected option argument for --color: $color"
+	fi
+
+	if [[ -n "${diffstat}" && "$color" == "always" ]]; then
+		error "don't combine --stat and --color=always"
+	fi
+
+	if [[ -n "${diffstat}" ]]; then
+		color=never
+	elif [[ -t 1 ]]; then
+		if [[ "$color" == auto ]]; then
+			color=always
+		fi
+	fi
+
 	{
 		foreach_rpmsavenew \
 			$with_pkg \
 			"do_${_ACTION//-/_}" "${_ACTION//-/_}"_main \
-			"$@"
+			--color="$color" \
+			-- "$@"
 	} | if [[ -n "${diffstat}" ]]; then
 		diffstat
 	else
@@ -413,7 +455,7 @@ do_sha1()
 	foreach_rpmsavenew \
 		$with_pkg \
 		--one-by-one "do_${_ACTION//-/_}" "${_ACTION//-/_}"_main \
-		"$@"
+		-- "$@"
 }
 
 help_ls_lZ()
@@ -457,7 +499,7 @@ do_ls_lZ()
 	foreach_rpmsavenew \
 		$with_pkg \
 		--one-by-one "do_${_ACTION//-/_}" "${_ACTION//-/_}"_main \
-		"$@"
+		-- "$@"
 }
 
 #
