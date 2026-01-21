@@ -313,7 +313,7 @@ do_sha1()
 	}
 }
 
-help_ls_lz()
+help_ls_lZ()
 {
 	echo "  $0 ls-lZ [FILE...]"
 	echo "  $0 ls-lZ --help|-h"
