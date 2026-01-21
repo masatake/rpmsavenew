@@ -105,6 +105,25 @@ print_option()
 	printf "  %-12s %s\n" "$@"
 }
 
+# 1: unsupported
+# 0: supported
+declare -i _grep_supports_pcre=
+grep_supports_pcre()
+{
+	if [[ -n "${_grep_supports_pcre}" ]]; then
+		return ${_grep_supports_pcre}
+	fi
+
+	grep -P xxx < /dev/null 2> /dev/null
+	if [[ $? == 2 ]]; then
+		_grep_supports_pcre=1
+		return 1
+	else
+		_grep_supports_pcre=0
+		return 0
+	fi
+}
+
 foreach_rpmsavenew()
 {
 	local one_by_one=
@@ -332,11 +351,36 @@ help_diff()
 	print_option --stat "generate diffstat"
 	print_option --with-pkg "add package information to the output"
 	print_option '--color=auto|always|never' "use markers to highlight the matching strings"
+	print_option '--ignore-case' "ignore case differences in file contents"
+	print_option '--ignore-tab-expansion' "ignore changes due to tab expansion"
+	print_option '--ignore-trailing-space' "ignore white space at line end"
+	print_option '--ignore-space-change' "ignore changes in the amount of white space"
+	print_option '--ignore-all-space' "ignore all white space"
+	print_option '--ignore-blank-lines' "ignore changes where lines are all blank"
+	print_option '--ignore-sh-comments' "ignore changes starting from '#'"
 }
 
 diff_main()
 {
 	diff -uN "$@"
+}
+
+ignore_sh_comments()
+{
+	if grep_supports_pcre; then
+		grep -P -v $'^(?:\x1b\\[[0-9;]*m)*[-+](?:\x1b\\[[0-9;]*m)*[ \t]*(?:\x1b\\[[0-9;]*m)*#'
+	else
+		cat
+	fi | grep -v $'^[-+][ \t]*#.*$'
+}
+
+ignore_blank_lines()
+{
+	if grep_supports_pcre; then
+		grep -P -v $'^(?:\x1b\\[[0-9;]*m)*[-+](?:\x1b\\[[0-9;]*m)*[ \t]*(?:\x1b\\[[0-9;]*m)*$'
+	else
+		cat
+	fi | grep -v $'^[-+][ \t]*$'
 }
 
 do_diff()
@@ -346,6 +390,10 @@ do_diff()
 	local diffstat
 	local with_pkg=
 	local color=auto
+
+	local -a ignore
+	local ignore_sh_comments=
+	local ignore_blank_lines=
 
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
@@ -373,6 +421,24 @@ do_diff()
 				color=$1
 				shift
 				;;
+			(--ignore-case|--ignore-tab-expansion|--ignore-trailing-space|--ignore-space-change|--ignore-all-space)
+				ignore+=("$1")
+				shift
+				;;
+			(--ignore-blank-lines)
+				ignore+=("$1")
+				ignore_blank_lines=1
+				shift
+				;;
+			(--ignore-sh-comments)
+				ignore+=($'--ignore-matching-lines=^[ \t]*#.*')
+				ignore_sh_comments=1
+				shift
+				;;
+			(--ignore-matching-lines=*)
+				ignore+=("$1")
+				shift
+				;;
 			(-*)
 				error "unknown option: $1"
 				;;
@@ -390,6 +456,26 @@ do_diff()
 		error "don't combine --stat and --color=always"
 	fi
 
+	if [[ -n "${ignore_sh_comments}" || -n "${ignore_blank_lines}" ]]; then
+		if [[ -n "${diffstat}" ]]; then
+			if [[ -n "${ignore_sh_comments}" ]]; then
+				error "don't combine --stat and --ignore-sh-comments"
+			elif [[ -n "${ignore_blank_lines}" ]]; then
+				error "don't combine --stat and --ignore-blank-lines"
+			fi
+		fi
+		if ! grep_supports_pcre && [[ "$color" == "always" ]]; then
+			if [[ -n "${ignore_sh_comments}" ]]; then
+				error "your grep doesn't support -P option; don't combine --color=always and --ignore-sh-comments"
+			elif [[ -n "${ignore_blank_lines}" ]]; then
+				error "your grep doesn't support -P option; don't combine --color=always and --ignore-blank-lines"
+			fi
+		fi
+		if ! grep_supports_pcre && [[ "$color" == "auto" ]]; then
+			color=never
+		fi
+	fi
+
 	if [[ -n "${diffstat}" ]]; then
 		color=never
 	elif [[ -t 1 ]]; then
@@ -403,9 +489,18 @@ do_diff()
 			$with_pkg \
 			"do_${_ACTION//-/_}" "${_ACTION//-/_}"_main \
 			--color="$color" \
+			"${ignore[@]}" \
 			-- "$@"
 	} | if [[ -n "${diffstat}" ]]; then
 		diffstat
+	else
+		cat
+	fi | if [[ -n "$ignore_sh_comments" ]]; then
+		ignore_sh_comments
+	else
+		cat
+	fi | if [[ -n "$ignore_blank_lines" ]]; then
+		ignore_blank_lines
 	else
 		cat
 	fi
