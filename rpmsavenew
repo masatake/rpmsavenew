@@ -33,6 +33,9 @@ declare -ra actions=(
 	# ask-ai
 )
 
+#
+# common helpers
+#
 member()
 {
 	local elt=$1
