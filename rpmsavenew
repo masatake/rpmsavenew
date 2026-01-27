@@ -124,6 +124,11 @@ grep_supports_pcre()
 	fi
 }
 
+is_available()
+{
+	type $1 >/dev/null 2>&1
+}
+
 foreach_rpmsavenew()
 {
 	local one_by_one=
@@ -416,7 +421,7 @@ do_diff()
 				exit 0
 				;;
 			(--stat)
-				if ! type diffstat > /dev/null 2>&1; then
+				if ! is_available diffstat; then
 					error "Command not available: diffstat"
 				fi
 				diffstat=1
