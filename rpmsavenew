@@ -30,6 +30,7 @@ declare -ra actions=(
 	ls-lZ
 	archive
 	confspec
+	selftest
 	# accept-rpmnew
 	# remove-rpmnew
 	# use-rpmsave
@@ -906,6 +907,62 @@ do_confspec()
 				esac
 			done
 	done
+}
+
+#
+# action: selftest
+#
+help_selftest()
+{
+	echo "  $0 selftest ubi8"
+}
+
+do_selftest_ubi8()
+{
+}
+
+do_selftest()
+{
+	local img
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			(-h|--help)
+				do_help "${_ACTION}"
+				exit 0
+				;;
+			(-*)
+				error "unknown option: $1"
+				;;
+			(*)
+				break
+				;;
+		esac
+	done
+
+	if ! is_available podman; then
+		error "command not available: podman"
+	fi
+
+	if [[ $# -gt 1 ]]; then
+		error "too many arguments: $@"
+	fi
+
+	if [[ $# -eq 0 ]]; then
+		img=ubi8
+	else
+		img=$1
+	fi
+
+	export SUPPRESS_BOLTDB_WARNING=1
+
+	case "$img" in
+		(ubi8)
+			do_selftest_ubi8
+			;;
+		(*)
+			error "unknown platform: $img"
+			;;
+	esac
 }
 
 #
