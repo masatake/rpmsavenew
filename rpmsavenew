@@ -29,6 +29,7 @@ declare -ra actions=(
 	sha1
 	ls-lZ
 	archive
+	confspec
 	# accept-rpmnew
 	# remove-rpmnew
 	# use-rpmsave
@@ -834,6 +835,77 @@ do_help()
 	a=${a//-/_}
 	help_"$a" "$a"
 	exit 0
+}
+
+#
+# action: confspec
+#
+help_confspec()
+{
+	echo "  $0 confspec [PKG...]"
+	echo "  $0 confspec --help|-h"
+}
+
+do_confspec()
+{
+	local with_pkg
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			(-h|--help)
+				do_help "${_ACTION}"
+				exit 0
+				;;
+			(--with-pkg)
+				with_pkg=$1
+				shift
+				;;
+			(-*)
+				error "unknown option: $1"
+				;;
+			(*)
+				break
+				;;
+		esac
+	done
+
+	local p
+	local -a pkgs
+
+	if [[ $# -eq 0 ]]; then
+		for p in $(rpm -qa); do
+			pkgs+=( "$p" )
+		done
+	else
+		for p in "$@"; do
+			if ! pkgs+=( $(rpm -q "$p") ) ; then
+				error "no such package: $p"
+			fi
+		done
+	fi
+
+	for p in "${pkgs[@]}"; do
+		local c
+
+		rpm -q --qf '[%{filenames}: %{fileflags:fflags}\n]' "$p" |
+			while read c; do
+				case "$c" in
+					(*:\ cn)
+						if [[ -n "${with_pkg}" ]]; then
+							echo "new 	$p	${c%: cn}"
+						else
+							echo "new 	${c%: cn}"
+						fi
+						;;
+					(*:\ c)
+						if [[ -n "${with_pkg}" ]]; then
+							echo "save	$p	${c%: c}"
+						else
+							echo "save	${c%: c}"
+						fi
+						;;
+				esac
+			done
+	done
 }
 
 #
