@@ -28,9 +28,11 @@ declare -ra actions=(
 	diff
 	sha1
 	ls-lZ
-	# accept-new
-	# remove-new
-	# ask-ai
+	archive
+	# accept-rpmnew
+	# remove-rpmnew
+	# use-rpmsave
+	# ask-AI
 )
 
 #
@@ -98,6 +100,12 @@ options()
 {
 	echo
 	echo "Options:"
+}
+
+examples()
+{
+	echo
+	echo "Examples:"
 }
 
 print_option()
@@ -663,6 +671,125 @@ do_ls_lZ()
 		$pkg \
 		--one-by-one "do_${_ACTION//-/_}" "${_ACTION//-/_}"_main \
 		-- "$@"
+}
+
+#
+# action: archive
+#
+help_archive()
+{
+	echo "  $0 archive [--delete-directory] BODYNAME|EXISTING-DIR"
+	echo "  $0 archive --help|-h"
+
+	examples
+
+	echo "  # $0 archive /root"
+	echo "    => makes /root/rpmsave-PID-TIMESTAMP"
+	echo "         and /root/rpmsave-PID-TIMESTAMP.tar"
+	echo
+	echo "  # $0 archive /root/no-such-dir"
+	echo "    => makes /root/no-such-dir"
+	echo "         and /root/no-such-dir.tar"
+}
+
+copy_out()
+{
+	local dest=${1#--dest=}
+	shift
+
+	cp --parents -ra "$@" "$dest"
+}
+
+do_archive_main()
+{
+	local dest
+
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			(--dest=*)
+				dest=$1
+				shift
+				break
+				;;
+			(*)
+				break;
+				;;
+		esac
+	done
+
+	foreach_rpmsavenew \
+		do_archive_main copy_out \
+		"$dest" \
+		-- "$@"
+}
+
+do_archive()
+{
+	local delete_directory
+
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			(-h|--help)
+				do_help "${_ACTION}"
+				exit 0
+				;;
+			(--delete-directory)
+				delete_directory=1
+				shift
+				;;
+			(-*)
+				error "unknown option: $1"
+				;;
+			(*)
+				break
+				;;
+		esac
+	done
+
+	if [[ $# -eq 0 ]]; then
+		error "no archive name or directory given"
+	elif [[ $# -gt 1 ]]; then
+		error "too many arguments: $@"
+	fi
+
+	if ! is_available date; then
+		error "command not available: date"
+	fi
+
+	local N
+	local D
+	if [[ -d "$1" ]]; then
+		D=$1
+		N=$D/rpmsavenew-$$-$(date +'%Y%m%d-%H%M%S')
+	else
+		N=$1
+	fi
+
+	if [[ -z "$N" ]]; then
+		error "empty string given as the name of the output target"
+	fi
+
+	mkdir -p "$N" || error "fail to do mkdir: $N"
+
+	do_archive_main --dest="$N"
+	local s=$?
+
+	if [[ "$s" == 0 ]]; then
+		tar cvf "$N".tar "$N"
+		s="$?"
+	else
+		error "error in copy-out operation: $N"
+	fi
+
+	if [[ "$s" == 0 && -n "$D" ]]; then
+		echo  "$N".tar
+	fi
+
+	if [[ "$s" == 0 && -n "$delete_directory" ]]; then
+		rm -rf "$N"
+	fi
+
+	return $s
 }
 
 #
