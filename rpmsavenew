@@ -275,7 +275,7 @@ failed()
 #
 help_list_files()
 {
-	echo "  $0 list-files [--with-pkg] [--new|--save|--base|*--both*] [PKG...]"
+	echo "  $0 list-files [--with-pkg [--csv]] [--new|--save|--base|*--both*] [PKG...]"
 	echo "  $0 list-files --help|-h"
 }
 
@@ -283,6 +283,7 @@ do_list_files()
 {
 	local filter=both
 	local with_pkg=
+	local csv=
 	local f
 	local c
 
@@ -294,6 +295,10 @@ do_list_files()
 				;;
 			(--with-pkg)
 				with_pkg=1
+				shift
+				;;
+			(--csv)
+				csv=1
 				shift
 				;;
 			(--new)
@@ -359,7 +364,11 @@ do_list_files()
 
 		if [[ -n "$c" ]]; then
 			if [[ -n "${with_pkg}" ]]; then
-				printf "%50s %s\n" $(rpm -qf "$f") "$c"
+				if [[ -n "${csv}" ]]; then
+					printf "%s,%s\n" $(rpm -qf "$f") "$c"
+				else
+					printf "%50s %s\n" $(rpm -qf "$f") "$c"
+				fi
 			else
 				printf "%s\n" "$c"
 			fi
@@ -951,6 +960,14 @@ do_selftest_ubi8()
 	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
 	case "$out" in
 		(*([[:space:]])dbus-common-1.12.8-27.el8_10.noarch+([[:space:]])/etc/dbus-1/session.conf.rpmsave) ok;;
+		(*) failed "$out";;
+	esac
+
+	tcase "/etc/dbus-1/session.conf.rpmsave --with-pkg --csv"
+	script="$script0; /rpmsavenew list-files --with-pkg --csv"
+	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
+	case "$out" in
+		(dbus-common-1.12.8-27.el8_10.noarch,/etc/dbus-1/session.conf.rpmsave) ok;;
 		(*) failed "$out";;
 	esac
 
