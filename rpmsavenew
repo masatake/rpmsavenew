@@ -95,6 +95,32 @@ error_if_unknown_action()
 }
 
 #
+# helpers for writing test cases
+#
+title()
+{
+	echo "* $@"
+}
+
+tcase()
+{
+	echo -n "- $@"...
+}
+
+ok()
+{
+	echo "ok"
+}
+
+failed()
+{
+	echo "failed"
+	if [[ -n "$@" ]]; then
+		cat -n <<< "$@"
+	fi
+}
+
+#
 # action: list-files
 #
 help_list_files()
