@@ -20,6 +20,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+shopt -s extglob
+
 declare _ACTION=
 
 declare -ra actions=(
@@ -919,6 +921,118 @@ help_selftest()
 
 do_selftest_ubi8()
 {
+	local -r img=ubi8:8.10
+	local out
+	local script0
+	local script
+
+	title "testing the action: list-files"
+
+	tcase "initial state"
+	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /rpmsavenew list-files)
+	if [[ -z "$out" ]]; then
+		ok
+	else
+		failed "$out"
+	fi
+
+	script0="echo vendor update >> /etc/dbus-1/session.conf.rpmsave"
+
+	tcase "/etc/dbus-1/session.conf.rpmsave"
+	script="$script0; /rpmsavenew list-files"
+	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
+	case "$out" in
+		(*([[:space:]])/etc/dbus-1/session.conf.rpmsave) ok;;
+		(*) failed "$out";;
+	esac
+
+	tcase "/etc/dbus-1/session.conf.rpmsave --with-pkg"
+	script="$script0; /rpmsavenew list-files --with-pkg"
+	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
+	case "$out" in
+		(*([[:space:]])dbus-common-1.12.8-27.el8_10.noarch+([[:space:]])/etc/dbus-1/session.conf.rpmsave) ok;;
+		(*) failed "$out";;
+	esac
+
+	tcase "/etc/dbus-1/session.conf.rpmsave --both"
+	script="$script0; /rpmsavenew list-files --both"
+	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
+	case "$out" in
+		(/etc/dbus-1/session.conf.rpmsave) ok;;
+		(*) failed "$out";;
+	esac
+
+	tcase "/etc/dbus-1/session.conf.rpmsave --save"
+	script="$script0; /rpmsavenew list-files --save"
+	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
+	case "$out" in
+		(/etc/dbus-1/session.conf.rpmsave) ok;;
+		(*) failed "$out";;
+	esac
+
+	tcase "/etc/dbus-1/session.conf.rpmsave --base"
+	script="$script0; /rpmsavenew list-files --base"
+	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
+	case "$out" in
+		(/etc/dbus-1/session.conf) ok;;
+		(*) failed "$out";;
+	esac
+
+	tcase "/etc/dbus-1/session.conf.rpmsave --with-pkg --both"
+	script="$script0; /rpmsavenew list-files --with-pkg --both"
+	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
+	case "$out" in
+		(*([[:space:]])dbus-common-1.12.8-27.el8_10.noarch+([[:space:]])/etc/dbus-1/session.conf.rpmsave) ok;;
+		(*) failed "$out";;
+	esac
+
+	tcase "/etc/dbus-1/session.conf.rpmsave --with-pkg --save"
+	script="$script0; /rpmsavenew list-files --with-pkg --save"
+	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
+	case "$out" in
+		(*([[:space:]])dbus-common-1.12.8-27.el8_10.noarch+([[:space:]])/etc/dbus-1/session.conf.rpmsave) ok;;
+		(*) failed "$out";;
+	esac
+
+	tcase "/etc/dbus-1/session.conf.rpmsave --with-pkg --base"
+	script="$script0; /rpmsavenew list-files --with-pkg --base"
+	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
+	case "$out" in
+		(*([[:space:]])dbus-common-1.12.8-27.el8_10.noarch+([[:space:]])/etc/dbus-1/session.conf) ok;;
+		(*) failed "$out";;
+	esac
+
+	tcase "/etc/dbus-1/session.conf.rpmsave [PKG] dbus-common"
+	script="$script0; /rpmsavenew list-files dbus-common"
+	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
+	case "$out" in
+		(*([[:space:]])/etc/dbus-1/session.conf.rpmsave) ok;;
+		(*) failed "$out";;
+	esac
+
+	tcase "/etc/dbus-1/session.conf.rpmsave [PKG] dbus-common-1.12.8-27.el8_10.noarch"
+	script="$script0; /rpmsavenew list-files dbus-common-1.12.8-27.el8_10.noarch"
+	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
+	case "$out" in
+		(*([[:space:]])/etc/dbus-1/session.conf.rpmsave) ok;;
+		(*) failed "$out";;
+	esac
+
+	tcase "/etc/dbus-1/session.conf.rpmsave --with-pkg [PKG] dbus-common"
+	script="$script0; /rpmsavenew list-files --with-pkg dbus-common"
+	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
+	case "$out" in
+		(*([[:space:]])dbus-common-1.12.8-27.el8_10.noarch+([[:space:]])/etc/dbus-1/session.conf.rpmsave) ok;;
+		(*) failed "$out";;
+	esac
+
+	tcase "/etc/dbus-1/session.conf.rpmsave --with-pkg [PKG] dbus-common-1.12.8-27.el8_10.noarch"
+	script="$script0; /rpmsavenew list-files --with-pkg dbus-common-1.12.8-27.el8_10.noarch"
+	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
+	case "$out" in
+		(*([[:space:]])dbus-common-1.12.8-27.el8_10.noarch+([[:space:]])/etc/dbus-1/session.conf.rpmsave) ok;;
+		(*) failed "$out";;
+	esac
 }
 
 do_selftest()
