@@ -367,6 +367,9 @@ do_list_files()
 	local -i l_pkg=0
 	local -i l_file=0
 
+	local -a clist
+	local sf
+
 	for f in $(rpm -q${aflag} --configfiles "$@"); do
 		# We expect a file name starting with '/'.
 		case "$f" in
@@ -374,6 +377,16 @@ do_list_files()
 			(*) continue;;
 		esac
 
+		clist+=("$f")
+		if [[ -s "$f" ]]; then
+			sf=$(realpath "$f")
+			if [[ "$sf" != "$f" ]]; then
+				clist+=( "$sf" )
+			fi
+		fi
+	done
+
+	for f in "${clist[@]}"; do
 		if [[ -e "${f}".rpmsave ]]; then
 			case "$filter" in
 				(both|save)
