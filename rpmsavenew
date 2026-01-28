@@ -69,9 +69,9 @@ error()
 warning()
 {
 	if [[ -n "$_ACTION" ]]; then
-		echo -n "ERROR[$_ACTION]: "
+		echo -n "warning[$_ACTION]: "
 	else
-		echo -n "ERROR: "
+		echo -n "warning: "
 	fi
 
 	if [[ $# == 0 ]]; then
