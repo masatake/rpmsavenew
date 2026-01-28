@@ -108,10 +108,18 @@ error_if_unknown_action()
 	fi
 }
 
-options()
+declare -a options
+declare -i l_options
+declare -a option_descs
+
+options_begin()
 {
 	echo
 	echo "Options:"
+
+	unset options
+	unset option_descs
+	l_options=0
 }
 
 examples()
@@ -122,7 +130,20 @@ examples()
 
 print_option()
 {
-	printf "  %-12s %s\n" "$@"
+	options+=("$1")
+	option_descs+=("$2")
+
+	if [[ ${#1} -gt $l_options ]]; then
+		l_options=${#1}
+	fi
+}
+
+options_end()
+{
+	local i
+	for ((i = 0; i < ${#options[@]}; i++)); do
+		printf "  %-${l_options}s  %s\n" "${options[$i]}" "${option_descs[$i]}"
+	done
 }
 
 # 1: unsupported
@@ -412,7 +433,7 @@ help_diff()
 	echo "  $0 diff [options] --pkg PKG"
 	echo "  $0 diff --help|-h"
 
-	options
+	options_begin
 	print_option --stat "generate diffstat"
 	print_option --with-pkg "add package information to the output"
 	print_option '--color=auto|always|never' "use markers to highlight the matching strings"
@@ -423,6 +444,7 @@ help_diff()
 	print_option '--ignore-all-space' "ignore all white space"
 	print_option '--ignore-blank-lines' "ignore changes where lines are all blank"
 	print_option '--ignore-sh-comments' "ignore changes starting from '#'"
+	options_end
 }
 
 diff_main()
@@ -596,8 +618,9 @@ help_sha1()
 	echo "  $0 sha1 [options] [FILE...]"
 	echo "  $0 sha1 [options] --pkg PKG"
 	echo "  $0 sha1 --help|-h"
-	options
+	options_begin
 	print_option --with-pkg "add package information to the output"
+	options_end
 }
 
 sha1_main()
@@ -657,8 +680,9 @@ help_ls_lZ()
 	echo "  $0 ls-lZ [options] [FILE...]"
 	echo "  $0 ls-lZ [options] --pkg PKG"
 	echo "  $0 ls-lZ --help|-h"
-	options
+	options_begin
 	print_option --with-pkg "add package information to the output"
+	options_end
 }
 
 ls_lZ_main()
