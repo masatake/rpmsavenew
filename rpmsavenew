@@ -33,10 +33,18 @@ declare -ra actions=(
 	archive
 	confspec
 	selftest
-	# accept-rpmnew
-	# remove-rpmnew
-	# use-rpmsave
-	# ask-AI
+	# apply (archive to system)
+	# batch (like git rebase -i)
+	# - nop/n
+	# - ACCEPT-NEW (A)
+	# - del-new (d)
+	# - restore-save (r)
+	# - DEL-SAVE (D)
+	# - view (v)
+	# - view-alt (a)
+	# - diff (=)
+	# - diff-x (x)
+	# - ask-AI (z)
 )
 
 #
