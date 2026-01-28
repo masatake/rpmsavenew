@@ -225,7 +225,7 @@ foreach_rpmsavenew()
 	done
 
 	if [[ $# -eq 0 ]]; then
-		while read p f; do
+		while read f p; do
 			if [[ -n "$with_pkg" ]]; then
 				echo "#"
 				echo "# package: $p"
@@ -414,9 +414,9 @@ do_list_files()
 	for ((i = 0; i < ${#files[@]}; i++)); do
 		if [[ -n "${with_pkg}" ]]; then
 			if [[ -n "${csv}" ]]; then
-				printf "%s,%s\n" "${pkgs[$i]}" "${files[$i]}"
+				printf "%s,%s\n" "${files[$i]}" "${pkgs[$i]}"
 			else
-				printf "  %${l_pkg}s %s\n" "${pkgs[$i]}" "${files[$i]}"
+				printf "  %-${l_file}s	%s\n" "${files[$i]}" "${pkgs[$i]}"
 			fi
 		else
 			printf "%s\n" "${files[$i]}"
@@ -1010,7 +1010,7 @@ do_selftest_ubi8()
 	script="$script0; /rpmsavenew list-files --with-pkg"
 	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
 	case "$out" in
-		(*([[:space:]])dbus-common-1.12.8-27.el8_10.noarch+([[:space:]])/etc/dbus-1/session.conf.rpmsave) ok;;
+		(+([[:space:]])/etc/dbus-1/session.conf.rpmsave+([[:space:]])dbus-common-1.12.8-27.el8_10.noarch) ok;;
 		(*) failed "$out";;
 	esac
 
@@ -1018,7 +1018,7 @@ do_selftest_ubi8()
 	script="$script0; /rpmsavenew list-files --with-pkg --csv"
 	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
 	case "$out" in
-		(dbus-common-1.12.8-27.el8_10.noarch,/etc/dbus-1/session.conf.rpmsave) ok;;
+		(/etc/dbus-1/session.conf.rpmsave,dbus-common-1.12.8-27.el8_10.noarch) ok;;
 		(*) failed "$out";;
 	esac
 
@@ -1050,7 +1050,7 @@ do_selftest_ubi8()
 	script="$script0; /rpmsavenew list-files --with-pkg --both"
 	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
 	case "$out" in
-		(*([[:space:]])dbus-common-1.12.8-27.el8_10.noarch+([[:space:]])/etc/dbus-1/session.conf.rpmsave) ok;;
+		(+([[:space:]])/etc/dbus-1/session.conf.rpmsave+([[:space:]])dbus-common-1.12.8-27.el8_10.noarch) ok;;
 		(*) failed "$out";;
 	esac
 
@@ -1058,7 +1058,7 @@ do_selftest_ubi8()
 	script="$script0; /rpmsavenew list-files --with-pkg --save"
 	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
 	case "$out" in
-		(*([[:space:]])dbus-common-1.12.8-27.el8_10.noarch+([[:space:]])/etc/dbus-1/session.conf.rpmsave) ok;;
+		(+([[:space:]])/etc/dbus-1/session.conf.rpmsave+([[:space:]])dbus-common-1.12.8-27.el8_10.noarch) ok;;
 		(*) failed "$out";;
 	esac
 
@@ -1066,7 +1066,7 @@ do_selftest_ubi8()
 	script="$script0; /rpmsavenew list-files --with-pkg --base"
 	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
 	case "$out" in
-		(*([[:space:]])dbus-common-1.12.8-27.el8_10.noarch+([[:space:]])/etc/dbus-1/session.conf) ok;;
+		(+([[:space:]])/etc/dbus-1/session.conf+([[:space:]])dbus-common-1.12.8-27.el8_10.noarch) ok;;
 		(*) failed "$out";;
 	esac
 
@@ -1090,7 +1090,7 @@ do_selftest_ubi8()
 	script="$script0; /rpmsavenew list-files --with-pkg dbus-common"
 	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
 	case "$out" in
-		(*([[:space:]])dbus-common-1.12.8-27.el8_10.noarch+([[:space:]])/etc/dbus-1/session.conf.rpmsave) ok;;
+		(+([[:space:]])/etc/dbus-1/session.conf.rpmsave+([[:space:]])dbus-common-1.12.8-27.el8_10.noarch) ok;;
 		(*) failed "$out";;
 	esac
 
@@ -1098,7 +1098,7 @@ do_selftest_ubi8()
 	script="$script0; /rpmsavenew list-files --with-pkg dbus-common-1.12.8-27.el8_10.noarch"
 	out=$(podman run --rm -v "$0":/rpmsavenew:z $img /bin/sh -c "$script")
 	case "$out" in
-		(*([[:space:]])dbus-common-1.12.8-27.el8_10.noarch+([[:space:]])/etc/dbus-1/session.conf.rpmsave) ok;;
+		(+([[:space:]])/etc/dbus-1/session.conf.rpmsave+([[:space:]])dbus-common-1.12.8-27.el8_10.noarch) ok;;
 		(*) failed "$out";;
 	esac
 }
