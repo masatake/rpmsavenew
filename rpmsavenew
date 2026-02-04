@@ -22,6 +22,8 @@
 #
 shopt -s extglob
 
+declare -r ARCHIVE_FMT_VERSION=0.0
+
 declare _ACTION=
 
 declare -ra actions=(
@@ -63,6 +65,22 @@ member()
 	done
 
 	return 1
+}
+
+notice()
+{
+	if [[ -n "$_ACTION" ]]; then
+		echo -n "notice[$_ACTION]: "
+	else
+		echo -n "notice: "
+	fi
+
+	if [[ $# == 0 ]]; then
+		echo "$1"
+	else
+		printf "$@"
+		echo
+	fi
 }
 
 error()
@@ -848,8 +866,21 @@ do_archive()
 
 	mkdir -p "$N" || error "fail to do mkdir: $N"
 
-	do_archive_main --dest="$N"
+	notice "copying tree"
+	mkdir -p "$N/tree" || error "fail to do mkdir: $N/tree"
+	do_archive_main --dest="$N/tree"
 	local s=$?
+
+	notice "listing files"
+	$0 ls-lZ > "$N/ls_lZ"
+
+	notice "sha1sum files"
+	$0 sha1 > "$N/sha1"
+
+	notice "diff files"
+	$0 diff > "$N/diff"
+
+	echo "$ARCHIVE_FMT_VERSION" > "$N/version"
 
 	if [[ "$s" == 0 ]]; then
 		tar cvf "$N".tar "$N"
