@@ -779,8 +779,8 @@ help_archive()
 	examples
 
 	echo "  # $0 archive /root"
-	echo "    => makes /root/rpmsave-PID-TIMESTAMP"
-	echo "         and /root/rpmsave-PID-TIMESTAMP.tar"
+	echo "    => makes /root/rpmsavenew-PID-TIMESTAMP"
+	echo "         and /root/rpmsavenew-PID-TIMESTAMP.tar"
 	echo
 	echo "  # $0 archive /root/no-such-dir"
 	echo "    => makes /root/no-such-dir"
